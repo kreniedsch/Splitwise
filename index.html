@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-title" content="Kaden">
 <meta name="theme-color" content="#faf8f5">
 <title>Kaden</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
@@ -39,6 +42,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .navbar{display:flex;justify-content:space-between;align-items:center;min-height:44px;gap:8px;padding-top:max(8px,env(safe-area-inset-top))}
 .tb{color:var(--accent);font-size:16px;min-height:44px;padding:0 4px;font-weight:500}
 .tb.strong{font-weight:700}
+.logo{line-height:0}.logo img{display:block;height:36px;width:auto}
 .lt{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.3px;margin:2px 0 14px;overflow-wrap:anywhere;line-height:1.15}
 .cbtn{width:42px;height:42px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;color:var(--ink);flex:none}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}
@@ -421,7 +425,7 @@ function render(){
   var app=$('app'),h='';
   if((!S.cfg&&!S.local)||V.setup){app.innerHTML=renderSetup();return}
   if(V.view==='groups'){
-    h+='<div class="head"><h1 class="lt" style="margin:0">Gruppen</h1><span class="hr">'+status()+'<button class="cbtn" data-act="backup" aria-label="Backup">'+ic('down')+'</button></span></div>';
+    h+='<div class="head"><h1 class="logo" style="margin:0"><img src="kaden-wordmark.svg" alt="Kaden" height="36"></h1><span class="hr">'+status()+'<button class="cbtn" data-act="backup" aria-label="Backup">'+ic('down')+'</button></span></div>';
     h+=errBox();
     if(!S.cfg)h+='<button class="note" data-act="goSetup"><b>Nur auf diesem Gerät.</b> Tippe hier, um mit anderen zu teilen.</button>';
     var stale=S.groups.length&&(!S.lastBackup||Date.now()-S.lastBackup>14*864e5);
