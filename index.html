@@ -379,7 +379,7 @@ function renderSetup(){
   '<li>Zahnrad → <b>Projekteinstellungen → Allgemein</b> → Web-App (<code>&lt;/&gt;</code>) hinzufügen. Den Block <code>firebaseConfig</code> kopieren.</li>'+
   '<li>Hier unten einfügen und auf «Verbinden» tippen.</li></ol>'+
   '<div class="sec"><span>Regeln zum Einfügen</span></div><div class="grp"><div class="linkbox num" style="user-select:all">'+esc(RULES)+'</div><button class="btnrow" data-act="copyRules">Regeln kopieren</button></div>'+
-  '<div class="sec"><span>firebaseConfig</span></div><textarea id="cfgTxt" spellcheck="false" aria-label="firebaseConfig" placeholder="const firebaseConfig = {\n  apiKey: &quot;…&quot;,\n  databaseURL: &quot;https://…firebasedatabase.app&quot;,\n  …\n};"></textarea>'+
+  '<div class="sec"><span>firebaseConfig oder Einladungslink</span></div><textarea id="cfgTxt" spellcheck="false" aria-label="firebaseConfig" placeholder="const firebaseConfig = {\n  apiKey: &quot;…&quot;,\n  databaseURL: &quot;https://…firebasedatabase.app&quot;,\n  …\n};"></textarea>'+
   '<div class="err" id="cfgErr" role="alert"></div>'+
   '<div class="grp" style="margin-top:12px"><button class="btnrow" data-act="connect" style="font-weight:600">Verbinden</button>'+(S.local?'':'<button class="btnrow" data-act="goLocal">Erst lokal ausprobieren</button>')+'</div>'+
   (S.local?'<div class="help">Deine lokalen Gruppen werden beim Verbinden in die Datenbank übernommen.</div>':'');
@@ -435,6 +435,7 @@ function render(){
   if(V.view==='groups'){
     h+='<div class="head"><h1 class="logo" style="margin:0"><img src="kaden-wordmark.svg" alt="Kaden" height="36"></h1><span class="hr">'+status()+'<button class="cbtn" data-act="backup" aria-label="Backup">'+ic('down')+'</button></span></div>';
     h+=errBox();
+    h+='<button class="note" data-act="join"><b>Einladung erhalten?</b> Tippe hier und füge den Link ein.</button>';
     if(!S.cfg)h+='<button class="note" data-act="goSetup"><b>Nur auf diesem Gerät.</b> Tippe hier, um mit anderen zu teilen.</button>';
     var stale=S.groups.length&&(!S.lastBackup||Date.now()-S.lastBackup>14*864e5);
     if(stale)h+='<div class="note"><b>Backup fällig.</b> Tippe oben auf den Download-Knopf.</div>';
@@ -720,7 +721,32 @@ function parseCfg(t){
   while((m=re.exec(t)))o[m[1]]=m[2];
   return o;
 }
+function parseInvite(t){
+  var g=(String(t).match(/[#&?]g=([A-Za-z0-9]{10,40})/)||[])[1],c=(String(t).match(/[#&]c=([^&\s]+)/)||[])[1],cfg=null;
+  if(c){try{cfg=JSON.parse(atob(decodeURIComponent(c)));if(!cfg||!cfg.databaseURL)cfg=null}catch(e){cfg=null}}
+  return g?{g:g,cfg:cfg}:null;
+}
+function joinInvite(inv){
+  if(inv.cfg&&!S.cfg){S.cfg=inv.cfg;S.local=false;V.setup=false;Object.keys(refs).forEach(function(k){try{refs[k].off()}catch(x){}});refs={};db=null;connect()}
+  if(S.groups.indexOf(inv.g)<0)S.groups.push(inv.g);
+  save();if(db)listen(inv.g);
+  closeSheet();V.setup=false;V.view='group';V.gid=inv.g;V.tab='exp';render();window.scrollTo(0,0);maybeAskMe();
+}
+function sheetJoin(){
+  openSheet('<div class="topbar"><button class="rbtn" data-act="close" aria-label="Schliessen">'+ic('x')+'</button><b>Mit Link beitreten</b><span></span></div>'+
+    '<div class="help" style="margin:8px 0">Füge hier den Einladungslink ein, den du bekommen hast. Das ist nötig, wenn du Kaden auf dem Homescreen nutzt.</div>'+
+    '<textarea id="joinTxt" spellcheck="false" aria-label="Einladungslink" placeholder="https://…#g=…"></textarea>'+
+    '<div class="err" id="err" role="alert"></div>'+
+    '<div class="grp" style="margin-top:12px"><button class="btnrow" data-act="doJoin" style="font-weight:600">Beitreten</button></div>',null,false,false);
+}
+function doJoin(){
+  var inv=parseInvite($('joinTxt').value);
+  if(!inv){$('err').textContent='Das ist kein Einladungslink von Kaden.';return}
+  if(!S.cfg&&!inv.cfg){$('err').textContent='Im Link fehlt die Verbindung. Lass dir den Link in Kaden neu über «Mehr → Einladungslink teilen» schicken.';return}
+  joinInvite(inv);
+}
 function doConnect(){
+  var inv=parseInvite($("cfgTxt").value);if(inv){if(!inv.cfg){$("cfgErr").textContent="Im Link fehlt die Verbindung. Lass dir den Link neu über «Mehr → Einladungslink teilen» schicken.";return}joinInvite(inv);return}
   var c=parseCfg($('cfgTxt').value),e=$('cfgErr');
   if(!c.databaseURL){e.textContent='In der Config fehlt «databaseURL». Lege in Firebase zuerst die Realtime Database an und kopiere die Config danach erneut.';return}
   if(!/^https:\/\/.+\.(firebaseio\.com|firebasedatabase\.app)\/?$/.test(c.databaseURL)){e.textContent='Die databaseURL sieht ungewöhnlich aus. Sie sollte auf firebasedatabase.app oder firebaseio.com enden.';return}
@@ -745,6 +771,8 @@ document.addEventListener('click',function(ev){
     case 'home':V.view='groups';V.gid=null;render();break;
     case 'tab':V.tab=id;render();break;
     case 'newGroup':sheetNewGroup();break;
+    case 'join':sheetJoin();break;
+    case 'doJoin':doJoin();break;
     case 'saveGroup':saveGroup();break;
     case 'newExp':sheetExpense();break;
     case 'editExp':g=G();var ex=g&&g.exp.find(function(x){return x.id===id});if(ex)sheetExpense(ex);break;
