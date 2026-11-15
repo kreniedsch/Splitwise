@@ -212,7 +212,8 @@ function catIcon(k){for(var i=0;i<CATS.length;i++)if(CATS[i][0]===k)return CATS[
 function guessCat(t){for(var i=0;i<GUESS.length;i++)if(GUESS[i][1].test(t))return GUESS[i][0];return 'sonst'}
 
 var uid=function(){return Math.random().toString(36).slice(2,9)};
-function newGid(){var a=new Uint8Array(14);crypto.getRandomValues(a);return Array.prototype.map.call(a,function(b){return b.toString(36).padStart(2,'0')}).join('').slice(0,22)}
+function newGid(){var a=new Uint8Array(14);crypto.getRandomValues(a);return Array.prototype.map.call(a,function(b){return b.toString(36).padStart(2,'0')}).join('').slice(0,10)}
+function codeOf(id){return id.toUpperCase().replace(/(.{5})(?=.)/g,'$1-')}
 var today=function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 var COLORS=['#ff9500','#34c759','#5856d6','#ff2d55','#00a99d','#af52de','#007aff','#e5484d'];
@@ -227,7 +228,8 @@ function load(){
   try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.groups))return d}}catch(e){}
   return {cfg:null,local:false,groups:[],cache:{},me:{},lastBackup:null};
 }
-var S=load();S.cache=S.cache||{};S.me=S.me||{};
+var DEFAULT_CFG={apiKey:'',databaseURL:'https://kaden-a8f0a-default-rtdb.europe-west1.firebasedatabase.app',projectId:'kaden-a8f0a'};
+var S=load();S.cache=S.cache||{};S.me=S.me||{};if(!S.cfg&&!S.local){S.cfg=JSON.parse(JSON.stringify(DEFAULT_CFG));try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var V={view:'groups',gid:null,tab:'exp',armed:null,editId:null,armedGroup:null,armedAll:null,err:'',online:false,setup:false};
 
@@ -435,7 +437,7 @@ function render(){
   if(V.view==='groups'){
     h+='<div class="head"><h1 class="logo" style="margin:0"><img src="kaden-wordmark.svg" alt="Kaden" height="36"></h1><span class="hr">'+status()+'<button class="cbtn" data-act="backup" aria-label="Backup">'+ic('down')+'</button></span></div>';
     h+=errBox();
-    h+='<button class="note" data-act="join"><b>Einladung erhalten?</b> Tippe hier und füge den Link ein.</button>';
+    h+='<button class="note" data-act="join"><b>Einladung erhalten?</b> Tippe hier und gib den Code ein.</button>';
     if(!S.cfg)h+='<button class="note" data-act="goSetup"><b>Nur auf diesem Gerät.</b> Tippe hier, um mit anderen zu teilen.</button>';
     var stale=S.groups.length&&(!S.lastBackup||Date.now()-S.lastBackup>14*864e5);
     if(stale)h+='<div class="note"><b>Backup fällig.</b> Tippe oben auf den Download-Knopf.</div>';
@@ -647,6 +649,7 @@ function sheetGroup(){
     h+='<div class="sec"><span>Andere einladen</span></div><div class="grp">'+
     (canShare?'<button class="btnrow" data-act="shareLink" style="font-weight:600">Einladungslink teilen</button>':'')+
     '<button class="btnrow" data-act="copyLink">Einladungslink kopieren</button></div>'+
+    '<div class="sec"><span>Oder Gruppen-Code</span></div><div class="grp"><div class="linkbox num" style="user-select:all;font-size:22px;letter-spacing:1px;text-align:center;min-height:0;font-family:var(--display);font-weight:700">'+esc(codeOf(V.gid))+'</div><button class="btnrow" data-act="copyCode">Code kopieren</button></div>'+
     '<div class="help">Wer den Link öffnet, kann in dieser Gruppe mitschreiben. Gib ihn nur an Leute, die dabei sein sollen.</div>';
   }else{
     h+='<div class="sec"><span>Gemeinsam nutzen</span></div><div class="grp"><button class="btnrow" data-act="goSetup" style="font-weight:600">Mit Firebase verbinden</button></div><div class="help">Dann können alle mit ihrem eigenen Handy mitschreiben.</div>';
@@ -724,29 +727,29 @@ function parseCfg(t){
 function parseInvite(t){
   var g=(String(t).match(/[#&?]g=([A-Za-z0-9]{10,40})/)||[])[1],c=(String(t).match(/[#&]c=([^&\s]+)/)||[])[1],cfg=null;
   if(c){try{cfg=JSON.parse(atob(decodeURIComponent(c)));if(!cfg||!cfg.databaseURL)cfg=null}catch(e){cfg=null}}
+  if(!g&&!/[:\/#=]/.test(String(t))){var k=String(t).replace(/[^A-Za-z0-9]/g,'').toLowerCase();if(k.length>=10&&k.length<=40)g=k}
   return g?{g:g,cfg:cfg}:null;
 }
 function joinInvite(inv){
-  if(inv.cfg&&!S.cfg){S.cfg=inv.cfg;S.local=false;V.setup=false;Object.keys(refs).forEach(function(k){try{refs[k].off()}catch(x){}});refs={};db=null;connect()}
+  if(!S.cfg){S.cfg=inv.cfg||JSON.parse(JSON.stringify(DEFAULT_CFG));S.local=false;V.setup=false;Object.keys(refs).forEach(function(k){try{refs[k].off()}catch(x){}});refs={};db=null;connect()}
   if(S.groups.indexOf(inv.g)<0)S.groups.push(inv.g);
   save();if(db)listen(inv.g);
   closeSheet();V.setup=false;V.view='group';V.gid=inv.g;V.tab='exp';render();window.scrollTo(0,0);maybeAskMe();
 }
 function sheetJoin(){
-  openSheet('<div class="topbar"><button class="rbtn" data-act="close" aria-label="Schliessen">'+ic('x')+'</button><b>Mit Link beitreten</b><span></span></div>'+
-    '<div class="help" style="margin:8px 0">Füge hier den Einladungslink ein, den du bekommen hast. Das ist nötig, wenn du Kaden auf dem Homescreen nutzt.</div>'+
-    '<textarea id="joinTxt" spellcheck="false" aria-label="Einladungslink" placeholder="https://…#g=…"></textarea>'+
+  openSheet('<div class="topbar"><button class="rbtn" data-act="close" aria-label="Schliessen">'+ic('x')+'</button><b>Gruppe beitreten</b><span></span></div>'+
+    '<div class="help" style="margin:8px 0">Gib den Gruppen-Code ein (oder füge den Einladungslink ein), den du bekommen hast.</div>'+
+    '<textarea id="joinTxt" spellcheck="false" aria-label="Gruppen-Code" placeholder="Code, z. B. K7M2Q-9XPDA" style="min-height:64px;font-size:18px"></textarea>'+
     '<div class="err" id="err" role="alert"></div>'+
     '<div class="grp" style="margin-top:12px"><button class="btnrow" data-act="doJoin" style="font-weight:600">Beitreten</button></div>',null,false,false);
 }
 function doJoin(){
   var inv=parseInvite($('joinTxt').value);
-  if(!inv){$('err').textContent='Das ist kein Einladungslink von Kaden.';return}
-  if(!S.cfg&&!inv.cfg){$('err').textContent='Im Link fehlt die Verbindung. Lass dir den Link in Kaden neu über «Mehr → Einladungslink teilen» schicken.';return}
+  if(!inv){$('err').textContent='Das ist kein gültiger Code oder Link von Kaden.';return}
   joinInvite(inv);
 }
 function doConnect(){
-  var inv=parseInvite($("cfgTxt").value);if(inv){if(!inv.cfg){$("cfgErr").textContent="Im Link fehlt die Verbindung. Lass dir den Link neu über «Mehr → Einladungslink teilen» schicken.";return}joinInvite(inv);return}
+  var inv=parseInvite($("cfgTxt").value);if(inv){joinInvite(inv);return}
   var c=parseCfg($('cfgTxt').value),e=$('cfgErr');
   if(!c.databaseURL){e.textContent='In der Config fehlt «databaseURL». Lege in Firebase zuerst die Realtime Database an und kopiere die Config danach erneut.';return}
   if(!/^https:\/\/.+\.(firebaseio\.com|firebasedatabase\.app)\/?$/.test(c.databaseURL)){e.textContent='Die databaseURL sieht ungewöhnlich aus. Sie sollte auf firebasedatabase.app oder firebaseio.com enden.';return}
@@ -773,6 +776,7 @@ document.addEventListener('click',function(ev){
     case 'newGroup':sheetNewGroup();break;
     case 'join':sheetJoin();break;
     case 'doJoin':doJoin();break;
+    case 'copyCode':copyText(codeOf(V.gid),function(){$('err').style.color='var(--pos)';$('err').textContent='Code kopiert.'},function(){$('err').textContent='Kopieren nicht möglich.'});break;
     case 'saveGroup':saveGroup();break;
     case 'newExp':sheetExpense();break;
     case 'editExp':g=G();var ex=g&&g.exp.find(function(x){return x.id===id});if(ex)sheetExpense(ex);break;
