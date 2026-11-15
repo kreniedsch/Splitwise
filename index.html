@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Teilen">
+<meta name="apple-mobile-web-app-title" content="Kaden">
 <meta name="theme-color" content="#faf8f5">
-<title>Teilen</title>
+<title>Kaden</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
@@ -661,7 +661,7 @@ function copyText(txt,done,failMsg){
 /* ---------- Backup ---------- */
 function backupJSON(){
   var groups={};S.groups.forEach(function(id){if(S.cache[id])groups[id]=S.cache[id]});
-  return JSON.stringify({app:'teilen',version:2,exported:new Date().toISOString(),groups:groups},null,1);
+  return JSON.stringify({app:'kaden',version:2,exported:new Date().toISOString(),groups:groups},null,1);
 }
 function sheetBackup(){
   openSheet('<div class="navbar"><span style="min-width:70px"></span><b>Backup</b><button class="tb strong" data-act="close">Fertig</button></div>'+
@@ -684,7 +684,7 @@ function markBackup(){S.lastBackup=Date.now();save()}
 function doDownload(){
   try{
     var blob=new Blob([backupJSON()],{type:'application/json'}),a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);a.download='teilen-backup-'+today()+'.json';
+    a.href=URL.createObjectURL(blob);a.download='kaden-backup-'+today()+'.json';
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(a.href)},4000);
     markBackup();$('err').textContent='Backup gespeichert. Falls nichts passiert, nutze «Text kopieren».';
@@ -693,7 +693,7 @@ function doDownload(){
 function doRestore(){
   try{
     var d=JSON.parse($('bTxt').value);
-    if(!d||d.app!=='teilen'||!d.groups||typeof d.groups!=='object')throw 0;
+    if(!d||(d.app!=='kaden'&&d.app!=='teilen')||!d.groups||typeof d.groups!=='object')throw 0;
     var ids=Object.keys(d.groups);
     ids.forEach(function(id){if(!/^[A-Za-z0-9]{10,40}$/.test(id)||!d.groups[id]||!d.groups[id].name)throw 0});
     if(!db){$('err').textContent='Keine Verbindung zum Server.';return}
@@ -756,7 +756,7 @@ document.addEventListener('click',function(ev){
     case 'groupMenu':V.armedGroup=null;V.armedAll=null;sheetGroup();break;
     case 'addMember':addMember();break;
     case 'shareLink':
-      try{navigator.share({title:'Teilen',text:'Komm in unsere Gruppe «'+G().name+'»',url:inviteLink(V.gid)}).catch(function(){})}catch(e){}
+      try{navigator.share({title:'Kaden',text:'Komm in unsere Gruppe «'+G().name+'»',url:inviteLink(V.gid)}).catch(function(){})}catch(e){}
       break;
     case 'copyLink':
       copyText(inviteLink(V.gid),function(){$('err').style.color='var(--pos)';$('err').textContent='Link kopiert.'},function(){$('err').textContent='Kopieren nicht möglich.'});
